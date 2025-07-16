@@ -1,0 +1,11 @@
+kubectl apply -f httpbin-v1.yaml
+kubectl apply -f httpbin-v2.yaml
+kubectl apply -f httpbin-service.yaml
+
+
+
+
+
+kubectl apply -f destination-rule.yaml
+kubectl apply -f virtual-service.yaml
+

@@ -1,0 +1,109 @@
+
+kubectl label namespace default istio-injection=enabled
+
+
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.21/samples/bookinfo/platform/kube/bookinfo.yaml
+
+
+kubectl create ns test
+
+
+kubectl run test --image=nginx -n test
+
+
+kubectl exec -ti test -n test -- /bin/bash
+
+curl --head productpage.default.svc.cluster.local:9080
+
+
+response OK 200
+
+because default behaviour is ALLow in an out traffic in service mesh
+
+
+
+for restricting traffic
+
+vim peer_auth.yaml
+
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: default
+spec:
+  mtls:
+    mode: STRICT
+
+ 
+kubectl apply -f peer_auth.yaml
+
+
+kubectl delete pod test -n test
+
+istioctl analyze -n test
+
+
+kubectl label namespace test istio-injection=enabled
+
+
+kubectl run test --image=nginx -n test
+
+
+now it works because traffic is being encrypted 
+
+
+
+
+
+
+
+practical 2
+
+
+vim sidecar_test_namespace.yaml
+
+apiVersion: networking.istio.io/v1
+kind: Sidecar
+metadata:
+  name: default
+  namespace: test
+spec:
+  egress:
+  - hosts:
+    - "./*"
+    - "istio-system/*"
+
+
+kubectl apply -f sidecar_test_namespace.yaml
+
+
+kubectl exec -ti -n test test -- /bin/bash
+
+
+curl --head productpage.default.svc.cluster.local:9080
+output:  curl: (52) Empty reply from server
+
+
+
+
+
+
+kubectl logs -n test service-a -c istio-proxy
+
+
+for ns in team-a team-b team-c team-d; do
+  kubectl create namespace $ns
+  kubectl label namespace $ns istio-injection=enabled
+done
+
+
+
+for ns in team-a team-b team-c team-d; do
+  kubectl run nginx --image=nginx -n $ns --labels="app=nginx"
+  kubectl expose pod nginx --port=80 -n $ns
+done
+
+
+
+
