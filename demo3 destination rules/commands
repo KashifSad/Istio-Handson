@@ -1,0 +1,114 @@
+
+
+kubectl label namespace default istio-injection=enabled
+
+kubectl create ns test
+kubectl label namespace test istio-injection=enabled
+
+
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.26/samples/helloworld/helloworld.yaml
+
+
+
+kubectl run test -n test --image=nginx
+
+kubectl exec -it test -n test -- /bin/bash
+
+curl helloworld.default.svc:5000/helloworld
+
+
+
+
+
+vim destination-rules.yaml
+
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: helloworld-ds
+  namespace: default
+spec:
+  host: helloworld
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+
+kubectl apply -f destination-rules.yaml
+
+
+
+
+
+
+
+virtual-service.yaml
+
+
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: helloworld-vs
+  namespace: default
+spec:
+  hosts:
+  - helloworld
+  http:
+  - route:
+    - destination:
+        host: helloworld
+        subset: v1
+      weight: 50
+    - destination:
+        host: helloworld
+        subset: v2
+      weight: 50
+      
+      
+kubectl apply -f virtual-service.yaml
+
+
+
+
+kubectl exec -ti test -n test -- /bin/bash
+curl helloworld.default.svc:5000/hello
+
+
+
+
+
+
+flow of traffic
+
+
+🧠 Summary Table
+
+
+| Component                        | Role                                               |
+| -------------------------------- | -------------------------------------------------- |
+| **Client**                       | Sends request to public IP                         |
+| **K8s Service (IngressGateway)** | Exposes Istio Gateway to outside                   |
+| **Istio Gateway**                | Accepts traffic on ports like 80/443               |
+| **VirtualService**               | Defines traffic routing (host/path based, subsets) |
+| **DestinationRule**              | Maps subset names (`v1`, `v2`) to pod labels       |
+| **K8s Service (helloworld)**     | Internal service that balances to pods             |
+| **Pods (v1, v2)**                | Actual app instances that respond                  |
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+
+
